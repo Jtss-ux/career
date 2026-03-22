@@ -1,0 +1,5 @@
+google-adk[fastapi,ui]
+python-dotenv
+google-cloud-aiplatform
+google-genai
+uvicorn
