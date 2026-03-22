@@ -2,51 +2,71 @@ import os
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
-# MOCKED CareerPilot AI - No API Keys Required
-# This version behaves like an AI but uses high-quality predefined logic
-# Perfect for demonstrations and submissions when Vertex AI is unavailable.
+# HYBRID CareerPilot AI - Supports Gemini API Key OR Mocked Fallback
+# If GOOGLE_API_KEY is found in Render/Environment, it uses real AI.
+# If no key is found, it uses the high-quality pre-written career scripts.
 
-def suggest_skills(career_goal: str) -> str:
-    """Mocked skill suggestion logic."""
-    skills = {
-        "cloud architect": "1. Google Cloud Professional Architect Certification\n2. Terraform & Infrastructure as Code\n3. Kubernetes & GKE\n4. Network Security & Identity IAM",
-        "data scientist": "1. Python (Pandas, Scikit-learn)\n2. SQL & BigQuery\n3. Machine Learning Frameworks (TensorFlow/PyTorch)\n4. Data Visualization (Looker/Tableau)",
-        "full stack developer": "1. React/Next.js for Frontend\n2. Node.js or Python for Backend\n3. Database Management (SQL/NoSQL)\n4. CI/CD & Cloud Deployment"
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+
+# --- MOCKED FALLBACK LOGIC ---
+def get_mock_response(tool_name: str, query: str) -> str:
+    mock_data = {
+        "skills": f"Essential Skills for {query}:\n1. Technical Proficiency\n2. Cloud Fundamentals\n3. Problem Solving\n4. Communication",
+        "projects": f"Projects for {query}:\n1. Industry Case Study\n2. Open Source Patch\n3. Personal Portfolio App",
+        "resume": "Resume Tip: Focus on quantifiable achievements and use active keywords.",
+        "roadmap": f"Roadmap for {query}:\nPhase 1: Foundations\nPhase 2: Building Projects\nPhase 3: Certification\nPhase 4: Hiring"
     }
-    goal = career_goal.lower()
-    for key in skills:
-        if key in goal:
-            return f"Top Skills for your goal:\n{skills[key]}"
-    return f"To excel as a {career_goal}, focus on: 1. Core Technical Fundamentals 2. Domain Specialty 3. Cloud Infrastructure 4. Soft Skills (Communication & Leadership)."
+    return mock_data.get(tool_name, "I recommend reaching out to a mentor for specialized advice.")
+
+# --- AI TOOL WRAPPERS ---
+def suggest_skills(career_goal: str) -> str:
+    if GOOGLE_API_KEY:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=GOOGLE_API_KEY)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            response = model.generate_content(f"Suggest top technical skills for: {career_goal}")
+            return response.text
+        except Exception as e:
+            return get_mock_response("skills", career_goal)
+    return get_mock_response("skills", career_goal)
 
 def suggest_projects(career_goal: str) -> str:
-    """Mocked project suggestion logic."""
-    return f"Recommended Portfolio Projects for {career_goal}:\n1. End-to-End {career_goal} Dashboard\n2. Automated Cloud Migration Script\n3. AI-Powered Analysis Tool\n4. Open Source Contribution in your niche."
+    if GOOGLE_API_KEY:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=GOOGLE_API_KEY)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            response = model.generate_content(f"Suggest 3 portfolio projects for: {career_goal}")
+            return response.text
+        except Exception:
+            return get_mock_response("projects", career_goal)
+    return get_mock_response("projects", career_goal)
 
 def resume_feedback(resume_text: str) -> str:
-    """Mocked resume analyzer."""
-    return "Resume Feedback:\n- Use more action verbs (e.g., 'Spearheaded', 'Optimized').\n- Quantify results (e.g., 'Improved performance by 30%').\n- Ensure technical keywords match your target role.\n- Keep it to 1-2 pages maximum."
+    if GOOGLE_API_KEY:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=GOOGLE_API_KEY)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            response = model.generate_content(f"Review this resume summary: {resume_text}")
+            return response.text
+        except Exception:
+            return get_mock_response("resume", resume_text)
+    return get_mock_response("resume", resume_text)
 
-def career_path_guide(current_role: str, target_role: str) -> str:
-    """Mocked career path guide."""
-    return f"Roadmap from {current_role} to {target_role}:\n- Phase 1 (0-3 mo): Foundation & Certification\n- Phase 2 (3-6 mo): Build 3 Major Projects\n- Phase 3 (6-9 mo): Networking & Application\n- Phase 4 (9-12 mo): Interview Prep & Landing the Job!"
-
-# Define Sub-Agents (Mocked)
+# --- Define Sub-Agents ---
 resume_agent = Agent(name="resume_agent", instruction="Analyze resumes.", tools=[resume_feedback])
 skill_agent = Agent(name="skill_agent", instruction="Suggest skills.", tools=[suggest_skills])
-project_agent = Agent(name="project_agent", instruction="Suggest projects.", tools=[suggest_projects, career_path_guide])
+project_agent = Agent(name="project_agent", instruction="Suggest projects.", tools=[suggest_projects])
 
-# Main Orchestrator
+# --- Main Orchestrator ---
 careerpilot_orchestrator = Agent(
     name="careerpilot_orchestrator",
     sub_agents=[resume_agent, skill_agent, project_agent],
     instruction="""
-You are CareerPilot AI. You help users navigate their career.
-When a user asks for a career plan or skills, use your tools to provide a professional response.
-Always format your answer clearly with headers:
-1. 🛤️ Career Roadmap
-2. 💡 Essential Skills
-3. 🏗️ Recommended Projects
-4. 📄 Resume Tips
+You are CareerPilot AI. Help users with career advice.
+If you have an API key, use it to provide deep insights.
+If not, provide structured advice from your built-in knowledge.
     """
 )

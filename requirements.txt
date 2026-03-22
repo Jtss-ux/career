@@ -1,3 +1,4 @@
 google-adk[fastapi,ui]
 python-dotenv
+google-generativeai
 uvicorn
