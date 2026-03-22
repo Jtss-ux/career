@@ -2,71 +2,79 @@ import os
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
-# HYBRID CareerPilot AI - Supports Gemini API Key OR Mocked Fallback
-# If GOOGLE_API_KEY is found in Render/Environment, it uses real AI.
-# If no key is found, it uses the high-quality pre-written career scripts.
+# ADVANCED HYBRID CareerPilot AI - Smart Model Routing
+# Pro: High Complexity (Career Paths)
+# Flash: Standard Tasks (Skills, Projects)
+# Mocked: Last-resort fallback
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
-# --- MOCKED FALLBACK LOGIC ---
-def get_mock_response(tool_name: str, query: str) -> str:
-    mock_data = {
-        "skills": f"Essential Skills for {query}:\n1. Technical Proficiency\n2. Cloud Fundamentals\n3. Problem Solving\n4. Communication",
-        "projects": f"Projects for {query}:\n1. Industry Case Study\n2. Open Source Patch\n3. Personal Portfolio App",
-        "resume": "Resume Tip: Focus on quantifiable achievements and use active keywords.",
-        "roadmap": f"Roadmap for {query}:\nPhase 1: Foundations\nPhase 2: Building Projects\nPhase 3: Certification\nPhase 4: Hiring"
-    }
-    return mock_data.get(tool_name, "I recommend reaching out to a mentor for specialized advice.")
+class SmartGemini:
+    """Intelligently routes requests to Pro, Flash, or Mocked fallback."""
+    
+    @staticmethod
+    def query(prompt: str, preferred_model: str = "gemini-1.5-flash") -> str:
+        if not GOOGLE_API_KEY:
+            return "fallback" # Trigger mocked logic
+        
+        import google.generativeai as genai
+        genai.configure(api_key=GOOGLE_API_KEY)
+        
+        # Try preferred model first, then the other, then fail to mocked
+        models_to_try = [preferred_model, "gemini-1.5-flash" if preferred_model == "gemini-1.5-pro" else "gemini-1.5-pro"]
+        
+        for model_name in models_to_try:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                return response.text
+            except Exception as e:
+                print(f"Model {model_name} failed: {e}")
+                continue
+        
+        return "fallback"
 
-# --- AI TOOL WRAPPERS ---
+# --- TOOLS WITH SMART ROUTING ---
+
 def suggest_skills(career_goal: str) -> str:
-    if GOOGLE_API_KEY:
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(f"Suggest top technical skills for: {career_goal}")
-            return response.text
-        except Exception as e:
-            return get_mock_response("skills", career_goal)
-    return get_mock_response("skills", career_goal)
+    prompt = f"Provide a detailed list of essential technical and soft skills for a {career_goal}."
+    res = SmartGemini.query(prompt, preferred_model="gemini-1.5-flash")
+    if res == "fallback":
+        return f"Key Skills for {career_goal}:\n1. Technical Mastery\n2. Tool Proficiency\n3. Agile Mindset\n4. Team Collaboration"
+    return res
 
 def suggest_projects(career_goal: str) -> str:
-    if GOOGLE_API_KEY:
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(f"Suggest 3 portfolio projects for: {career_goal}")
-            return response.text
-        except Exception:
-            return get_mock_response("projects", career_goal)
-    return get_mock_response("projects", career_goal)
+    prompt = f"Suggest 3 high-impact portfolio projects for a {career_goal} to land a top job."
+    res = SmartGemini.query(prompt, preferred_model="gemini-1.5-flash")
+    if res == "fallback":
+        return f"Projects for {career_goal}:\n1. End-to-end automation tool\n2. Professional Portfolio\n3. Open Source contribution"
+    return res
 
 def resume_feedback(resume_text: str) -> str:
-    if GOOGLE_API_KEY:
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(f"Review this resume summary: {resume_text}")
-            return response.text
-        except Exception:
-            return get_mock_response("resume", resume_text)
-    return get_mock_response("resume", resume_text)
+    prompt = f"Analyze this resume text and provide 3 critical improvements: {resume_text}"
+    res = SmartGemini.query(prompt, preferred_model="gemini-1.5-flash")
+    if res == "fallback":
+        return "Resume Tip: Use the X-Y-Z formula (Accomplished X, as measured by Y, by doing Z)."
+    return res
 
-# --- Define Sub-Agents ---
-resume_agent = Agent(name="resume_agent", instruction="Analyze resumes.", tools=[resume_feedback])
-skill_agent = Agent(name="skill_agent", instruction="Suggest skills.", tools=[suggest_skills])
-project_agent = Agent(name="project_agent", instruction="Suggest projects.", tools=[suggest_projects])
+def career_path_guide(current_role: str, target_role: str) -> str:
+    # Uses PRO for deep reasoning on career transitions
+    prompt = f"Create a comprehensive 4-phase transition roadmap from {current_role} to {target_role}. Be very detailed."
+    res = SmartGemini.query(prompt, preferred_model="gemini-1.5-pro")
+    if res == "fallback":
+        return f"Roadmap for {target_role}:\nPhase 1: Skill Audit\nPhase 2: Project Building\nPhase 3: Certification\nPhase 4: Targeted Networking"
+    return res
 
-# --- Main Orchestrator ---
+# --- AGENT ARCHITECTURE ---
+resume_agent = Agent(name="resume_agent", tools=[resume_feedback])
+skill_agent = Agent(name="skill_agent", tools=[suggest_skills])
+project_agent = Agent(name="project_agent", tools=[suggest_projects, career_path_guide])
+
 careerpilot_orchestrator = Agent(
     name="careerpilot_orchestrator",
     sub_agents=[resume_agent, skill_agent, project_agent],
-    instruction="""
-You are CareerPilot AI. Help users with career advice.
-If you have an API key, use it to provide deep insights.
-If not, provide structured advice from your built-in knowledge.
-    """
+    instruction="""You are CareerPilot AI.
+Use Gemini 1.5 Pro for complex roadmaps and Gemini 1.5 Flash for skills/projects.
+If APIs are down, provide structured advice from your built-in career benchmarks.
+Always be encouraging and professional."""
 )
