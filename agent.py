@@ -2,67 +2,98 @@ import os
 from dotenv import load_dotenv
 from google.adk.agents import Agent
 
-# ADVANCED HYBRID CareerPilot AI - Smart Model Routing
-# Pro: High Complexity (Career Paths)
-# Flash: Standard Tasks (Skills, Projects)
-# Mocked: Last-resort fallback
+# PREMIUM HYBRID CareerPilot AI - Top-Tier Edition
+# Persona: Senior Career Strategist & Tech Architect
+# Features: Smart Routing, Self-Healing, and Rich Visual Formatting
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 class SmartGemini:
-    """Intelligently routes requests to Pro, Flash, or Mocked fallback."""
+    """Intelligently routes requests to Pro, Flash, or Premium Mocked fallback."""
     
     @staticmethod
     def query(prompt: str, preferred_model: str = "gemini-1.5-flash") -> str:
+        # Add formatting instruction to every prompt to ensure 'Top-Tier' look
+        formatting_instruction = "\n\nCRITICAL: Format your response beautifully using Markdown. Use bolding for emphasis, bullet points for lists, and emojis where appropriate to make it look premium and professional."
+        full_prompt = prompt + formatting_instruction
+
         if not GOOGLE_API_KEY:
-            return "fallback" # Trigger mocked logic
+            return "fallback"
         
         import google.generativeai as genai
         genai.configure(api_key=GOOGLE_API_KEY)
         
-        # Try preferred model first, then the other, then fail to mocked
         models_to_try = [preferred_model, "gemini-1.5-flash" if preferred_model == "gemini-1.5-pro" else "gemini-1.5-pro"]
         
         for model_name in models_to_try:
             try:
                 model = genai.GenerativeModel(model_name)
-                response = model.generate_content(prompt)
+                response = model.generate_content(full_prompt)
                 return response.text
-            except Exception as e:
-                print(f"Model {model_name} failed: {e}")
+            except Exception:
                 continue
         
         return "fallback"
 
-# --- TOOLS WITH SMART ROUTING ---
+# --- PREMIUM TOOLS WITH SMART ROUTING ---
 
 def suggest_skills(career_goal: str) -> str:
-    prompt = f"Provide a detailed list of essential technical and soft skills for a {career_goal}."
+    prompt = f"Act as a Senior Tech Architect. Provide a high-level skill matrix for an aspiring {career_goal}. Group skills by 'Hard Skills', 'Soft Skills', and 'Future-Proof Skills'."
     res = SmartGemini.query(prompt, preferred_model="gemini-1.5-flash")
     if res == "fallback":
-        return f"Key Skills for {career_goal}:\n1. Technical Mastery\n2. Tool Proficiency\n3. Agile Mindset\n4. Team Collaboration"
+        return f"""
+### 💡 Essential Skill Matrix for **{career_goal}**
+
+| Category | Skills |
+| :--- | :--- |
+| **Hard Skills** | Tech Stack Proficiency, System Architecture, Code Optimization |
+| **Soft Skills** | Strategic Thinking, Stakeholder Management, Mentorship |
+| **Future-Proof** | AI Integration, Sustainability in Tech, Cloud Resilience |
+
+> *\"Skills are the architecture of your career success.\"*
+"""
     return res
 
 def suggest_projects(career_goal: str) -> str:
-    prompt = f"Suggest 3 high-impact portfolio projects for a {career_goal} to land a top job."
+    prompt = f"Design 3 'Portfolio Killers' (high-impact projects) for a {career_goal}. These should be projects that impress FAANG-level recruiters."
     res = SmartGemini.query(prompt, preferred_model="gemini-1.5-flash")
     if res == "fallback":
-        return f"Projects for {career_goal}:\n1. End-to-end automation tool\n2. Professional Portfolio\n3. Open Source contribution"
+        return f"""
+### 🏗️ **Top-Tier Portfolio Projects** for {career_goal}
+
+1.  **The Architect's Sandbox**: Build an auto-scaling cloud infrastructure for a high-traffic app.
+2.  **AI-Driven Career Bot**: Create a RAG-based agent that analyzes industry trends.
+3.  **Enterprise Security Audit**: Implement a Zero-Trust security layer for an open-source project.
+"""
     return res
 
 def resume_feedback(resume_text: str) -> str:
-    prompt = f"Analyze this resume text and provide 3 critical improvements: {resume_text}"
+    prompt = f"Perform a high-level executive review of this resume summary. Focus on 'Impact' and 'Metrics': {resume_text}"
     res = SmartGemini.query(prompt, preferred_model="gemini-1.5-flash")
     if res == "fallback":
-        return "Resume Tip: Use the X-Y-Z formula (Accomplished X, as measured by Y, by doing Z)."
+        return """
+### 📄 **Executive Resume Feedback**
+
+- **Quantify Impact**: Instead of "built apps," use "Built 5+ high-availability apps reducing latency by 40%."
+- **Action Verbs**: Use 'Architected', 'Spearheaded', and 'Orchestrated'.
+- **Keyword Optimization**: Ensure alignment with ATS (Applicant Tracking Systems).
+"""
     return res
 
 def career_path_guide(current_role: str, target_role: str) -> str:
-    # Uses PRO for deep reasoning on career transitions
-    prompt = f"Create a comprehensive 4-phase transition roadmap from {current_role} to {target_role}. Be very detailed."
+    prompt = f"Design a 12-month Executive Roadmap to transition from {current_role} to {target_role}. Include quarterly milestones and key 'Win' metrics."
     res = SmartGemini.query(prompt, preferred_model="gemini-1.5-pro")
     if res == "fallback":
-        return f"Roadmap for {target_role}:\nPhase 1: Skill Audit\nPhase 2: Project Building\nPhase 3: Certification\nPhase 4: Targeted Networking"
+        return f"""
+### 🚀 **12-Month Executive Roadmap**: {current_role} → {target_role}
+
+*   **Q1: Foundations**: Skill Gap Analysis & Certification.
+*   **Q2: Building**: Construction of Top-Tier Portfolio.
+*   **Q3: Visibility**: Industry Networking & Public Contributions.
+*   **Q4: Mastery**: Interview Preparation & Negotiation.
+
+**Key Metric**: Weekly networking calls + 1 published tech article.
+"""
     return res
 
 # --- AGENT ARCHITECTURE ---
@@ -73,8 +104,14 @@ project_agent = Agent(name="project_agent", tools=[suggest_projects, career_path
 careerpilot_orchestrator = Agent(
     name="careerpilot_orchestrator",
     sub_agents=[resume_agent, skill_agent, project_agent],
-    instruction="""You are CareerPilot AI.
-Use Gemini 1.5 Pro for complex roadmaps and Gemini 1.5 Flash for skills/projects.
-If APIs are down, provide structured advice from your built-in career benchmarks.
-Always be encouraging and professional."""
+    instruction="""
+You are **CareerPilot AI**, a Senior Career Strategist & Tech Architect.
+Your mission is to provide world-class, insightful, and visually stunning career advice.
+
+**Response Guidelines**:
+1. Use **Rich Markdown** (Bold, Italics, Lists, Tables).
+2. Be **Professional**, **Actionable**, and **Inspiring**.
+3. Use **Emojis** to add visual flair (🚀, 🏗️, 💡).
+4. For complex roadmaps, act like a high-end consultant.
+"""
 )
